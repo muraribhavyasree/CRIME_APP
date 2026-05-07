@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import "../styles/mycomplaints.css";
-import bg from "../assets/auth-bg.jpeg";
+import "../../styles/mycomplaints.css";
+import bg from "../../assets/auth-bg.jpeg";
 
 export default function ComplaintDetails() {
   const { state } = useLocation();

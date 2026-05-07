@@ -8,6 +8,9 @@ import DashboardLayout from "./pages/dashboard/DashboardLayout";
 import DashboardHome from "./pages/dashboard/DashboardHome";
 import ReportComplaint from "./pages/dashboard/ReportComplaint";
 import MyComplaints from "./pages/dashboard/MyComplaints";
+import ComplaintDetails from "./pages/dashboard/ComplaintDetails";
+import Profile from "./pages/dashboard/Profile";
+import TrackStatus from "./pages/dashboard/TrackStatus";
 
 export default function App() {
   return (
@@ -27,6 +30,9 @@ export default function App() {
         {/* nested pages */}
         <Route path="report" element={<ReportComplaint />} />
         <Route path="my-complaints" element={<MyComplaints />} />
+        <Route oath="ComplaintDetails" element={<ComplaintDetails />} />
+        <Route path="profile" element={<Profile />} />
+        <Route path="track-status" element={<TrackStatus />} />
 
       </Route>
 

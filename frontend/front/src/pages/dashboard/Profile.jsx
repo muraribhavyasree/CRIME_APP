@@ -1,11 +1,18 @@
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import "../../styles/profile.css";
 
 export default function Profile() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const name = location.state?.name || "User";
   const email = location.state?.email || "user@example.com";
+
+  // LOGOUT FUNCTION
+  const handleLogout = () => {
+    localStorage.clear(); // optional
+    navigate("/login");
+  };
 
   return (
     <div className="profile-container">
@@ -17,7 +24,8 @@ export default function Profile() {
         </div>
 
         <h1>{name}</h1>
-        <p>{email}</p>
+
+        <p className="email">{email}</p>
 
         <div className="info">
 
@@ -37,6 +45,14 @@ export default function Profile() {
           </div>
 
         </div>
+
+        {/* LOGOUT BUTTON */}
+        <button
+          className="profile-btn logout-btn"
+          onClick={handleLogout}
+        >
+          🚪 Logout
+        </button>
 
       </div>
 
