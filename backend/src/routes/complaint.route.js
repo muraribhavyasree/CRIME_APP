@@ -65,5 +65,4 @@ router.put(
   complaintController.updateStatus
 );
 
-
 module.exports = router;

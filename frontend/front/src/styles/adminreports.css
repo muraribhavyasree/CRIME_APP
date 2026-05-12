@@ -7,6 +7,13 @@
   color: #222;
 }
 
+/* TABLE CONTAINER */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 20px;
+  border-radius: 12px;
+}
 .admin-table {
   width: 100%;
   border-collapse: collapse;
@@ -31,6 +38,15 @@
   background: #f3f4f6;
 }
 
+/* STATUS BADGE */
+.status {
+  background: orange;
+  color: white;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: bold;
+}
 .dashboard-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

@@ -452,15 +452,8 @@ app.post(
     }
   }
 );
-
 /* ───────────────── MY COMPLAINTS ───────────────── */
-
-app.get(
-  "/api/complaints/my",
-  protect,
-
-  async (req, res) => {
-
+app.get("/api/complaints/my",protect,async (req, res) => {
     try {
 
       const complaints =
@@ -489,21 +482,11 @@ app.get(
 
 /* ───────────────── ADMIN ALL COMPLAINTS ───────────────── */
 
-app.get(
-  "/api/admin/complaints",
-  protect,
-  verifyAdmin,
-
+app.get("/api/admin/complaints",protect,verifyAdmin,
   async (req, res) => {
-
     try {
-
-      const complaints =
-        db.collection("complaints");
-
-      const users =
-        db.collection("users");
-
+      const complaints =db.collection("complaints");
+      const users =db.collection("users");
       const data =
         await complaints.find()
         .sort({ createdAt: -1 })

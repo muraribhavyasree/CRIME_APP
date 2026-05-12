@@ -46,7 +46,6 @@ export default function AdmindbLayout() {
             <h4>ADMIN USER</h4>
             <p>Super Administrator</p>
           </div>
-
         </div>
 
       </div>
@@ -56,11 +55,9 @@ export default function AdmindbLayout() {
       <div className="admin-main">
 
         <div className="admin-header">
-          <h1>Admin Panel</h1>
+          <h1>Admin Dashboard</h1>
         </div>
-
-        <Outlet />
-
+    <Outlet />
       </div>
 
     </div>
