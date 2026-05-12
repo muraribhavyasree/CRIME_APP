@@ -24,7 +24,7 @@ export default function MyComplaints() {
           }
         );
 
-        setComplaints(res.data);
+        setComplaints(res.data.complaints || []);
         setLoading(false);
 
       } catch (err) {

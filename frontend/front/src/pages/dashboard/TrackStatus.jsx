@@ -23,7 +23,7 @@ export default function TrackStatus() {
           }
         );
 
-        setComplaints(res.data);
+        setComplaints(res.data.complaints || []);
         setLoading(false);
 
       } catch (err) {

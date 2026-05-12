@@ -46,7 +46,7 @@ export default function Profile() {
           }
         );
 
-        setComplaintsCount(compRes.data.length);
+        setComplaintsCount(compRes.data.complaints?.length || 0);
 
       } catch (err) {
         console.log("PROFILE ERROR:", err);
@@ -56,7 +56,6 @@ export default function Profile() {
     fetchData();
 
   }, []);
-
 
   // LOGOUT
   const handleLogout = () => {

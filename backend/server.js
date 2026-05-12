@@ -7,41 +7,33 @@ const path = require("path");
 const { MongoClient, ObjectId } = require("mongodb");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-
 dns.setServers(["8.8.8.8", "8.8.4.4"]);
-
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
-
+/* ───────────────── STORAGE ───────────────── */
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "uploads/"),
   filename: (req, file, cb) =>
     cb(null, Date.now() + path.extname(file.originalname)),
 });
 const upload = multer({ storage });
-
+/* ───────────────── DATABASE ───────────────── */
 let db;
-
 const connectDB = async () => {
-  const uri = process.env.Mongo_DB_URI || process.env.MONGO_URI;
-  if (!uri) {
-    console.error("❌ No MongoDB URI found in .env");
-    process.exit(1);
-  }
   try {
-    const client = new MongoClient(uri);
+    const client = new MongoClient(process.env.MONGO_DB_URI);
     await client.connect();
-    db = client.db("civicapp"); // ✅ database name explicitly set
-    console.log("✅ Connected to MongoDB Atlas - civicapp");
+    db = client.db("civicapp");
+    console.log("✅ MongoDB Connected");
   } catch (err) {
-    console.error("❌ MongoDB Error:", err.message);
+    console.log(err);
     process.exit(1);
   }
 };
-
+/* ───────────────── AUTH MIDDLEWARE ───────────────── */
 const protect = (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer "))
@@ -49,8 +41,7 @@ const protect = (req, res, next) => {
   try {
     const decoded = jwt.verify(
       authHeader.split(" ")[1],
-      process.env.JWT_SECRET || "secret123"
-    );
+      process.env.JWT_SECRET || "secret123");
     req.user = decoded;
     next();
   } catch {
@@ -63,12 +54,10 @@ const adminOnly = (req, res, next) => {
     return res.status(403).json({ msg: "Admins only." });
   next();
 };
-
 // ── REGISTER ──────────────────────────────────────────────────────────────────
 app.post("/api/auth/register", async (req, res) => {
   try {
     const { name, email, phone, password, confirmPassword, agree, role, adminCode } = req.body;
-
     if (!name || !email || !password || !confirmPassword)
       return res.status(400).json({ msg: "All required fields must be filled" });
     if (password !== confirmPassword)
@@ -77,7 +66,6 @@ app.post("/api/auth/register", async (req, res) => {
       return res.status(400).json({ msg: "Password must be at least 8 characters" });
     if (!agree)
       return res.status(400).json({ msg: "You must accept the terms and conditions" });
-
     const requestedRole = role === "admin" ? "admin" : "user";
     if (requestedRole === "admin") {
       const validCode = process.env.ADMIN_REGISTRATION_CODE || "CIVIC_ADMIN_2024";
@@ -99,7 +87,6 @@ app.post("/api/auth/register", async (req, res) => {
       role: requestedRole,
       createdAt: new Date(),
     });
-
     res.status(201).json({
       msg: "Account created successfully",
       user: { id: result.insertedId, name, email: email.toLowerCase(), role: requestedRole },
@@ -162,32 +149,55 @@ app.get("/api/auth/me", protect, async (req, res) => {
   }
 });
 
-// ── SUBMIT COMPLAINT ──────────────────────────────────────────────────────────
-app.post("/api/complaints", protect, upload.single("image"), async (req, res) => {
-  try {
-    const { description, category, location } = req.body;
-    if (!description)
-      return res.status(400).json({ msg: "Description is required" });
+app.post(
+  "/api/complaints",protect,upload.single("image"),
+  async (req, res) => {
+    try {
+      const {title,description,category,location} = req.body;
+      if (!title || !description) {
+        return res.status(400).json({
+          msg: "Title and Description are required"
+        });
+      }
+      const imagePath = req.file
+        ? `/uploads/${req.file.filename}`
+        : "";
 
-    const imagePath = req.file ? `/uploads/${req.file.filename}` : "";
-    const complaints = db.collection("complaints");
-    const result = await complaints.insertOne({
-      userId: new ObjectId(req.user.id),
-      description,
-      category: category || "Others",
-      location: location || "",
-      image: imagePath,
-      status: "Pending",
-      createdAt: new Date(),
-    });
+      const complaints = db.collection("complaints");
 
-    res.status(201).json({ msg: "✅ Complaint submitted successfully!", id: result.insertedId });
-  } catch (err) {
-    console.error("Complaint error:", err.message);
-    res.status(500).json({ msg: "Failed to submit complaint" });
+      const result = await complaints.insertOne({
+        userId: new ObjectId(req.user.id),
+
+        title,
+        description,
+
+        category: category || "Others",
+
+        location: location || "",
+
+        image: imagePath,
+
+        status: "Pending",
+
+        createdAt: new Date(),
+      });
+
+      res.status(201).json({
+        msg: "✅ Complaint submitted successfully!",
+        id: result.insertedId
+      });
+
+    } catch (err) {
+
+      console.error("Complaint error:", err);
+
+      res.status(500).json({
+        msg: "Failed to submit complaint"
+      });
+
+    }
   }
-});
-
+);
 // ── MY COMPLAINTS ─────────────────────────────────────────────────────────────
 app.get("/api/complaints/my", protect, async (req, res) => {
   try {
@@ -201,7 +211,6 @@ app.get("/api/complaints/my", protect, async (req, res) => {
     res.status(500).json({ msg: err.message });
   }
 });
-
 // ── ALL COMPLAINTS (admin) ────────────────────────────────────────────────────
 app.get("/api/complaints", protect, adminOnly, async (req, res) => {
   try {
@@ -212,7 +221,6 @@ app.get("/api/complaints", protect, adminOnly, async (req, res) => {
     res.status(500).json({ msg: err.message });
   }
 });
-
 // ── UPDATE STATUS (admin) ─────────────────────────────────────────────────────
 app.patch("/api/complaints/:id/status", protect, adminOnly, async (req, res) => {
   try {
@@ -220,7 +228,6 @@ app.patch("/api/complaints/:id/status", protect, adminOnly, async (req, res) => 
     const validStatuses = ["Pending", "In Progress", "Resolved"];
     if (!validStatuses.includes(status))
       return res.status(400).json({ msg: "Invalid status value" });
-
     const complaints = db.collection("complaints");
     await complaints.updateOne(
       { _id: new ObjectId(req.params.id) },
@@ -231,7 +238,6 @@ app.patch("/api/complaints/:id/status", protect, adminOnly, async (req, res) => 
     res.status(500).json({ msg: err.message });
   }
 });
-
 // ── ADMIN STATS ───────────────────────────────────────────────────────────────
 app.get("/api/admin/stats", protect, adminOnly, async (req, res) => {
   try {
@@ -245,7 +251,350 @@ app.get("/api/admin/stats", protect, adminOnly, async (req, res) => {
     res.status(500).json({ msg: err.message });
   }
 });
+/* ───────────────── VERIFY ADMIN ───────────────── */
+const verifyAdmin = (
+  req,
+  res,
+  next
+) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({
+      msg: "Admin access only"
+    });
+  }
+  next();
+};
+/* ───────────────── REGISTER ───────────────── */
+app.post(
+  "/api/auth/register",
+  async (req, res) => {
+    try {
+      const {name,email,password,role} = req.body;
+      const users =db.collection("users");
+      const existing =await users.findOne({
+          email: email.toLowerCase()
+        });
+      if (existing) {
+        return res.status(400).json({
+          msg: "Email already exists"
+        });
+      }
+      const hashedPassword =
+        await bcrypt.hash(password, 10);
+      const result =
+        await users.insertOne({name,email:email.toLowerCase(),password:hashedPassword,role:role === "admin"? "admin": "user",
+          createdAt:
+            new Date()
+        });
+      res.status(201).json({
+        msg: "Registered",
+        user: {id: result.insertedId,name,email,role}
+      });
+    } catch (err) {
+      console.log(err);
+      res.status(500).json({
+        msg: "Server Error"
+      });
+    }}
+);
+/* ───────────────── LOGIN ───────────────── */
+app.post(
+  "/api/auth/login",
+  async (req, res) => {
 
+    try {
+
+      const {
+        email,
+        password
+      } = req.body;
+
+      const users =
+        db.collection("users");
+      const user =
+        await users.findOne({
+          email: email.toLowerCase()
+        });
+      if (!user) {
+        return res.status(401).json({
+          msg: "Invalid Email"
+        });
+      }
+      const isMatch =
+        await bcrypt.compare(
+          password,
+          user.password
+        );
+      if (!isMatch) {
+        return res.status(401).json({
+          msg: "Invalid Password"
+        });
+      }
+      const token = jwt.sign(
+        {
+          id: user._id,
+          role: user.role
+        },
+        process.env.JWT_SECRET,
+        {
+          expiresIn: "7d"
+        }
+      );
+      res.json({token,user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role
+        }
+      });
+    } catch (err) {
+      console.log(err);
+      res.status(500).json({
+        msg: "Server Error"
+      });
+    }}
+);
+/* ───────────────── GET USER ───────────────── */
+app.get("/api/auth/me",
+  protect,
+  async (req, res) => {
+
+    try {
+
+      const users =
+        db.collection("users");
+
+      const user =
+        await users.findOne(
+
+          {
+            _id: new ObjectId(
+              req.user.id
+            )
+          },
+
+          {
+            projection: {
+              password: 0
+            }
+          }
+        );
+
+      res.json(user);
+
+    } catch (err) {
+
+      res.status(500).json({
+        msg: err.message
+      });
+    }
+  }
+);
+
+/* ───────────────── CREATE COMPLAINT ───────────────── */
+
+app.post(
+  "/api/complaints",
+  protect,
+  upload.single("image"),
+
+  async (req, res) => {
+
+    try {
+
+      const complaints =
+        db.collection("complaints");
+
+      const result =
+        await complaints.insertOne({
+
+          userId:
+            new ObjectId(req.user.id),
+
+          title:
+            req.body.title,
+
+          category:
+            req.body.category,
+
+          location:
+            req.body.location,
+
+          description:
+            req.body.description,
+
+          image:
+            req.file
+              ? `/uploads/${req.file.filename}`
+              : "",
+
+          status:
+            "Pending",
+
+          createdAt:
+            new Date()
+        });
+
+      res.status(201).json({
+
+        msg:
+          "Complaint Submitted",
+
+        id:
+          result.insertedId
+      });
+
+    } catch (err) {
+
+      res.status(500).json({
+        msg: err.message
+      });
+    }
+  }
+);
+
+/* ───────────────── MY COMPLAINTS ───────────────── */
+
+app.get(
+  "/api/complaints/my",
+  protect,
+
+  async (req, res) => {
+
+    try {
+
+      const complaints =
+        db.collection("complaints");
+
+      const data =
+        await complaints.find({
+
+          userId:
+            new ObjectId(req.user.id)
+
+        })
+        .sort({ createdAt: -1 })
+        .toArray();
+
+      res.json(data);
+
+    } catch (err) {
+
+      res.status(500).json({
+        msg: err.message
+      });
+    }
+  }
+);
+
+/* ───────────────── ADMIN ALL COMPLAINTS ───────────────── */
+
+app.get(
+  "/api/admin/complaints",
+  protect,
+  verifyAdmin,
+
+  async (req, res) => {
+
+    try {
+
+      const complaints =
+        db.collection("complaints");
+
+      const users =
+        db.collection("users");
+
+      const data =
+        await complaints.find()
+        .sort({ createdAt: -1 })
+        .toArray();
+
+      const finalData =
+        await Promise.all(
+
+          data.map(async (item) => {
+
+            const user =
+              await users.findOne({
+
+                _id:
+                  item.userId
+              });
+
+            return {
+
+              ...item,
+
+              user: {
+
+                name:
+                  user?.name,
+
+                email:
+                  user?.email
+              }
+            };
+          })
+        );
+
+      res.json(finalData);
+
+    } catch (err) {
+
+      res.status(500).json({
+        msg: err.message
+      });
+    }
+  }
+);
+
+/* ───────────────── UPDATE STATUS ───────────────── */
+
+app.patch(
+  "/api/admin/complaints/:id",
+
+  protect,
+  verifyAdmin,
+
+  async (req, res) => {
+
+    try {
+
+      const complaints =
+        db.collection("complaints");
+
+      await complaints.updateOne(
+
+        {
+          _id:
+            new ObjectId(
+              req.params.id
+            )
+        },
+
+        {
+          $set: {
+
+            status:
+              req.body.status
+          }
+        }
+      );
+
+      res.json({
+        msg: "Updated"
+      });
+
+    } catch (err) {
+
+      res.status(500).json({
+        msg: err.message
+      });
+    }
+  }
+);
+
+/* ───────────────── SERVER ───────────────── */
 app.get("/", (req, res) => res.send("CivicSnap API running ✅"));
 
 connectDB().then(() => {
